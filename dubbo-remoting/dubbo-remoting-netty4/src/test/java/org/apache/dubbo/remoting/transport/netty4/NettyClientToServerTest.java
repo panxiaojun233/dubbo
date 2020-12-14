@@ -31,7 +31,7 @@ public class NettyClientToServerTest extends ClientToServerTest {
 
     protected ExchangeServer newServer(int port, Replier<?> receiver) throws RemotingException {
         // add heartbeat cycle to avoid unstable ut.
-        URL url = URL.valueOf("exchange://localhost:" + port + "?server=netty4");
+        URL url = URL.valueOf("exchange://localhost:" + port + "?server=http2");
         url = url.addParameter(Constants.HEARTBEAT_KEY, 600 * 1000);
         return Exchangers.bind(url, receiver);
     }

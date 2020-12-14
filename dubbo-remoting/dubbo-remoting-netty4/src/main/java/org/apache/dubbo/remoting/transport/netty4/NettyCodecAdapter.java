@@ -16,6 +16,7 @@
  */
 package org.apache.dubbo.remoting.transport.netty4;
 
+import io.netty.handler.codec.MessageToMessageCodec;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.remoting.Codec2;
 import org.apache.dubbo.remoting.buffer.ChannelBuffer;
@@ -26,9 +27,17 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.MessageToByteEncoder;
+import org.apache.dubbo.remoting.exchange.Request;
+import org.apache.dubbo.remoting.transport.netty4.http2.StreamPayload;
+import org.apache.dubbo.rpc.model.ApplicationModel;
+import org.apache.dubbo.rpc.model.MethodDescriptor;
+import org.apache.dubbo.rpc.model.ServiceRepository;
 
 import java.io.IOException;
+import java.lang.reflect.Parameter;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * NettyCodecAdapter.
@@ -38,6 +47,8 @@ final public class NettyCodecAdapter {
     private final ChannelHandler encoder = new InternalEncoder();
 
     private final ChannelHandler decoder = new InternalDecoder();
+
+    private final ChannelHandler http2Codec = new InternalDecoder();
 
     private final Codec2 codec;
 
@@ -82,6 +93,7 @@ final public class NettyCodecAdapter {
             // decode object.
             do {
                 int saveReaderIndex = message.readerIndex();
+                // message to request
                 Object msg = codec.decode(channel, message);
                 if (msg == Codec2.DecodeResult.NEED_MORE_INPUT) {
                     message.readerIndex(saveReaderIndex);

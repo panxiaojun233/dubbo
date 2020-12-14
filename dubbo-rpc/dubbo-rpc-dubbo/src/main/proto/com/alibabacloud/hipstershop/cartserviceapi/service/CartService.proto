@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+option java_package = "com.alibabacloud.hipstershop.cartserviceapi.service";
+option java_multiple_files = true;
+
+package com.alibabacloud.hipstershop.cartserviceapi.service;
+
+import "com/alibabacloud/hipstershop/cartserviceapi/domain/User.proto";
+service CartService {
+  rpc complexTest2(CartServiceComplexTest2Request)
+    returns (CartServiceComplexTest2Reply){};
+}
+
+
+message CartServiceComplexTest2Request {
+  message ValueMapEntry {
+    int32 key = 1;
+    .com.alibabacloud.hipstershop.cartserviceapi.domain.User value = 2;
+  }
+
+  map<int32, ValueMapEntry> userMap = 1;
+}
+
+message CartServiceComplexTest2Reply {
+  message ValueMapEntry {
+    string key = 1;
+    .com.alibabacloud.hipstershop.cartserviceapi.domain.User value = 2;
+  }
+
+  map<string, ValueMapEntry> returnValue = 1;
+}
+
+

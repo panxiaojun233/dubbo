@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+option java_package = "com.alibabacloud.hipstershop.cartserviceapi.domain";
+option java_multiple_files = true;
+
+package com.alibabacloud.hipstershop.cartserviceapi.domain;
+
+
+message User {
+  string name = 1;
+  int32 age = 2;
+}
+
+

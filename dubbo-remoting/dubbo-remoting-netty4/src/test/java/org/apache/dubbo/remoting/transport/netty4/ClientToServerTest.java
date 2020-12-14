@@ -48,9 +48,10 @@ public abstract class ClientToServerTest {
 
     @BeforeEach
     protected void setUp() throws Exception {
-        int port = NetUtils.getAvailablePort();
+        int port = 50051;
         server = newServer(port, handler);
-        client = newClient(port);
+        System.out.println("http2 server start");
+        //client = newClient(port);
     }
 
     @AfterEach
@@ -66,8 +67,13 @@ public abstract class ClientToServerTest {
 
     @Test
     public void testFuture() throws Exception {
-        CompletableFuture<Object> future = client.request(new World("world"));
-        Hello result = (Hello) future.get();
-        Assertions.assertEquals("hello,world", result.getName());
+        //CompletableFuture<Object> future = client.request(new World("world"));
+        //Hello result = (Hello) future.get();
+        //Assertions.assertEquals("hello,world", result.getName());
+        try {
+            Thread.sleep(100000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
