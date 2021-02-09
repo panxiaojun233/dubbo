@@ -25,9 +25,11 @@ import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcInvocation;
 import org.apache.dubbo.rpc.model.ApplicationModel;
 import org.apache.dubbo.rpc.model.ConsumerModel;
+import org.reactivestreams.Subscriber;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 
 /**
  * InvokerHandler
@@ -68,7 +70,18 @@ public class InvokerInvocationHandler implements InvocationHandler {
         } else if (parameterTypes.length == 1 && "equals".equals(methodName)) {
             return invoker.equals(args[0]);
         }
-        RpcInvocation rpcInvocation = new RpcInvocation(method, invoker.getInterface().getName(), protocolServiceKey, args);
+        RpcInvocation rpcInvocation;
+        if (parameterTypes.length == 1 && isStreamType(parameterTypes[0])) {
+            //rpcInvocation = new RpcInvocation(method.getName(), invoker.getInterface().getName(), protocolServiceKey,
+            //    new Class<?>[] {
+            //        (Class<?>)((ParameterizedType)method.getGenericParameterTypes()[0]).getActualTypeArguments()[0]},
+            //    (Class<?>)((ParameterizedType)method.getGenericReturnType()).getActualTypeArguments()[0], args, null);
+        } else {
+            //rpcInvocation = new RpcInvocation(method, invoker.getInterface().getName(), protocolServiceKey, args);
+        }
+
+        rpcInvocation = new RpcInvocation(method, invoker.getInterface().getName(), protocolServiceKey, args);
+
         String serviceKey = url.getServiceKey();
         rpcInvocation.setTargetServiceUniqueName(serviceKey);
 
@@ -81,5 +94,9 @@ public class InvokerInvocationHandler implements InvocationHandler {
         }
 
         return invoker.invoke(rpcInvocation).recreate();
+    }
+
+    private static boolean isStreamType(Class<?> clz) {
+        return Subscriber.class.isAssignableFrom(clz);
     }
 }

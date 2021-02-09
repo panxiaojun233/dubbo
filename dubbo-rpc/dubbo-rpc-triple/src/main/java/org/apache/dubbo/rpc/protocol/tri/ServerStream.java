@@ -19,6 +19,7 @@
 
 package org.apache.dubbo.rpc.protocol.tri;
 
+import io.netty.handler.codec.http2.Http2DataFrame;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
@@ -50,6 +51,7 @@ import io.netty.handler.codec.http2.DefaultHttp2Headers;
 import io.netty.handler.codec.http2.DefaultHttp2HeadersFrame;
 import io.netty.handler.codec.http2.Http2Headers;
 
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +76,7 @@ public class ServerStream extends AbstractStream implements Stream {
     private final ProviderModel providerModel;
     private final String methodName;
     private MethodDescriptor methodDescriptor;
+    private volatile boolean headerSent = false;
 
 
     public ServerStream(Invoker<?> invoker, ServiceDescriptor serviceDescriptor, String methodName, ChannelHandlerContext ctx) {
@@ -86,6 +89,32 @@ public class ServerStream extends AbstractStream implements Stream {
         this.ctx = ctx;
     }
 
+    public void writeObjectOut(Object o) {
+        final Message message = (Message) o;
+        final ByteBuf buf = TripleUtil.pack(ctx, message);
+        Http2Headers http2Headers = new DefaultHttp2Headers()
+            .status(OK.codeAsText())
+            .set(HttpHeaderNames.CONTENT_TYPE, TripleConstant.CONTENT_PROTO);
+        if (!headerSent) {
+            headerSent = true;
+            ctx.write(new DefaultHttp2HeadersFrame(http2Headers));
+        }
+        ctx.write(new DefaultHttp2DataFrame(buf));
+    }
+
+    public void onData(ChannelHandlerContext ctx) {
+        ResponseObserverProcessor processor = ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).get();
+        List<MethodDescriptor> methods = serviceDescriptor.getMethods(methodName);
+        if (methods.size() == 1) {
+            methodDescriptor = methods.get(0);
+        }
+
+        InputStream is = getData();
+        while (is != null) {
+            processor.onNext(TripleUtil.unpack(is, methodDescriptor.getParameterClasses()[0]));
+            is = getData();
+        }
+    }
 
     @Override
     public void onError(GrpcStatus status) {
@@ -125,6 +154,14 @@ public class ServerStream extends AbstractStream implements Stream {
                     .withCause(t)
                     .withDescription("Provider's error"));
         }
+    }
+
+    public void onComplete() {
+        final Http2Headers trailers = new DefaultHttp2Headers()
+            .set(HttpHeaderNames.CONTENT_TYPE, TripleConstant.CONTENT_PROTO)
+            .status(OK.codeAsText())
+            .setInt(TripleConstant.STATUS_KEY, GrpcStatus.Code.OK.code);
+        ctx.writeAndFlush(new DefaultHttp2HeadersFrame(trailers, true));
     }
 
     private void unaryInvoke() {

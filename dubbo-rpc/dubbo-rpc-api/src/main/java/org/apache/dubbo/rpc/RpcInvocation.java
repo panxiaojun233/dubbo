@@ -133,8 +133,9 @@ public class RpcInvocation implements Invocation, Serializable {
         this(methodName, serviceName, protocolServiceKey, parameterTypes, arguments, null, null, null);
     }
 
-    public RpcInvocation(String methodName, String serviceName, String protocolServiceKey, Class<?>[] parameterTypes, Object[] arguments, Map<String, Object> attachments) {
+    public RpcInvocation(String methodName, String serviceName, String protocolServiceKey, Class<?>[] parameterTypes, Class<?> returnType, Object[] arguments, Map<String, Object> attachments) {
         this(methodName, serviceName, protocolServiceKey, parameterTypes, arguments, attachments, null, null);
+        this.returnType = returnType;
     }
 
     public RpcInvocation(String methodName, String serviceName, String protocolServiceKey, Class<?>[] parameterTypes, Object[] arguments,

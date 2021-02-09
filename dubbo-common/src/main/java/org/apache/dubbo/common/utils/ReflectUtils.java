@@ -20,6 +20,7 @@ import javassist.CtClass;
 import javassist.CtConstructor;
 import javassist.CtMethod;
 import javassist.NotFoundException;
+import org.reactivestreams.Subscriber;
 
 import java.beans.BeanInfo;
 import java.beans.Introspector;
@@ -1184,7 +1185,7 @@ public final class ReflectUtils {
     public static Type[] getReturnTypes(Method method) {
         Class<?> returnType = method.getReturnType();
         Type genericReturnType = method.getGenericReturnType();
-        if (Future.class.isAssignableFrom(returnType)) {
+        if (Future.class.isAssignableFrom(returnType)|| Subscriber.class.isAssignableFrom(returnType)) {
             if (genericReturnType instanceof ParameterizedType) {
                 Type actualArgType = ((ParameterizedType) genericReturnType).getActualTypeArguments()[0];
                 if (actualArgType instanceof ParameterizedType) {

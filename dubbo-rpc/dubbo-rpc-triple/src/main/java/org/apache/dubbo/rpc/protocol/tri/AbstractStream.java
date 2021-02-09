@@ -33,9 +33,12 @@ import io.netty.handler.codec.http2.Http2Headers;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Queue;
 
 import static org.apache.dubbo.rpc.protocol.tri.TripleUtil.responseErr;
 
@@ -50,7 +53,7 @@ public abstract class AbstractStream implements Stream {
     private Http2Headers headers;
     private Http2Headers te;
     private boolean needWrap;
-    private InputStream data;
+    private Queue<InputStream> datas = new ArrayDeque<>();
     private String serializeType;
 
     protected AbstractStream(URL url, ChannelHandlerContext ctx) {
@@ -104,7 +107,8 @@ public abstract class AbstractStream implements Stream {
     }
 
     public InputStream getData() {
-        return data;
+        System.out.println("getData data size:" + datas.size());
+        return datas.poll();
     }
 
     public MultipleSerialization getMultipleSerialization() {
@@ -113,12 +117,12 @@ public abstract class AbstractStream implements Stream {
 
     @Override
     public void onData(InputStream in) {
-        if (data != null) {
-            responseErr(ctx, TOO_MANY_DATA);
-            return;
-        }
-
-        this.data = in;
+        //if (data != null) {
+        //    responseErr(ctx, TOO_MANY_DATA);
+        //    return;
+        //}
+        System.out.println("onData data size:" + datas.size());
+        this.datas.add(in);
     }
 
     public void onHeaders(Http2Headers headers) {

@@ -42,6 +42,7 @@ import org.apache.dubbo.rpc.protocol.AbstractInvoker;
 import org.apache.dubbo.rpc.support.RpcUtils;
 
 import io.netty.channel.ChannelFuture;
+import org.reactivestreams.Subscriber;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;

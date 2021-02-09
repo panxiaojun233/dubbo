@@ -24,6 +24,8 @@ import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.rpc.Result;
+import org.apache.dubbo.rpc.RpcInvocation;
 import org.apache.dubbo.rpc.model.ApplicationModel;
 import org.apache.dubbo.rpc.model.ServiceDescriptor;
 import org.apache.dubbo.rpc.model.ServiceRepository;
@@ -39,6 +41,7 @@ import io.netty.handler.codec.http2.Http2DataFrame;
 import io.netty.handler.codec.http2.Http2Frame;
 import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2HeadersFrame;
+import org.reactivestreams.Subscriber;
 
 import static org.apache.dubbo.rpc.protocol.tri.TripleUtil.responseErr;
 import static org.apache.dubbo.rpc.protocol.tri.TripleUtil.responsePlainTextError;
@@ -75,14 +78,19 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
 
     public void onDataRead(ChannelHandlerContext ctx, Http2DataFrame msg) throws Exception {
         super.channelRead(ctx, msg.content());
+        ResponseObserverProcessor processor = ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).get();
+
+        processor.getStream().onData(ctx);
         if (msg.isEndStream()) {
-            final ServerStream serverStream = TripleUtil.getServerStream(ctx);
-            // stream already closed;
-            if (serverStream != null) {
-                serverStream.halfClose();
-            }
+            processor.onComplete();
+            //final ServerStream serverStream = TripleUtil.getServerStream(ctx);
+            //// stream already closed;
+            //if (serverStream != null) {
+            //    serverStream.halfClose();
+            //}
         }
     }
+
 
     private Invoker<?> getInvoker(Http2Headers headers, String serviceName) {
         final String version = headers.contains(TripleConstant.SERVICE_VERSION) ? headers.get(TripleConstant.SERVICE_VERSION).toString() : null;
@@ -149,8 +157,22 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
 
 
         final ServerStream serverStream = new ServerStream(delegateInvoker, descriptor, methodName, ctx);
+        // 往netty写数据，server impl.onNext
+        StreamOutboundWriter streamOutboundWriter = new StreamOutboundWriter(serverStream);
+        ResponseObserverProcessor processor = new ResponseObserverProcessor(ctx, serverStream);
+        RpcInvocation inv = new RpcInvocation();//streamOutboundWriter
+        inv.setArguments(new Object[]{streamOutboundWriter});
+        inv.setMethodName(methodName);
+        inv.setServiceName(serviceName);
+        inv.setTargetServiceUniqueName(serviceName);
+        inv.setParameterTypes(new Class[]{Subscriber.class});
+        inv.setReturnTypes(new Class[]{Subscriber.class});
+        Result result = delegateInvoker.invoke(inv);
+        final Subscriber<Object> resp = (Subscriber<Object>)result.get().getValue();
+        processor.subscribe(resp);
         serverStream.onHeaders(headers);
         ctx.channel().attr(TripleUtil.SERVER_STREAM_KEY).set(serverStream);
+        ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).set(processor);
         if (msg.isEndStream()) {
             serverStream.halfClose();
         }
