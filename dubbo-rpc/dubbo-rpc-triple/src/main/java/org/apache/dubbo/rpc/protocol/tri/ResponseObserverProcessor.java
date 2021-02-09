@@ -6,14 +6,15 @@ import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Flux;
 
-public class ResponseObserverProcessor extends Flux<Object> implements Subscriber<Object> {
+public class ResponseObserverProcessor implements Subscriber<Object> {
 
     private ChannelHandlerContext ctx;
     private volatile Subscriber<Object> subscriber;
     private ServerStream stream;
-    public ResponseObserverProcessor(ChannelHandlerContext ctx, ServerStream stream) {
+    public ResponseObserverProcessor(ChannelHandlerContext ctx, ServerStream stream, Subscriber<Object> subscriber) {
         this.stream = stream;
         this.ctx = ctx;
+        this.subscriber = subscriber;
     }
 
     public ServerStream getStream() {
@@ -40,9 +41,5 @@ public class ResponseObserverProcessor extends Flux<Object> implements Subscribe
         subscriber.onComplete();
     }
 
-    @Override
-    public void subscribe(CoreSubscriber<? super Object> coreSubscriber) {
-        subscriber = coreSubscriber;
-    }
 
 }
