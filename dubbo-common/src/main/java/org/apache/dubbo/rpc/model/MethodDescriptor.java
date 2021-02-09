@@ -16,6 +16,7 @@
  */
 package org.apache.dubbo.rpc.model;
 
+import org.apache.dubbo.common.stream.StreamObserver;
 import org.apache.dubbo.common.utils.ReflectUtils;
 import org.reactivestreams.Subscriber;
 
@@ -66,7 +67,7 @@ public class MethodDescriptor {
     }
 
     private static boolean isStreamType(Class<?> clz) {
-        return Subscriber.class.isAssignableFrom(clz);
+        return StreamObserver.class.isAssignableFrom(clz);
     }
 
     public boolean isNoPubStream() {

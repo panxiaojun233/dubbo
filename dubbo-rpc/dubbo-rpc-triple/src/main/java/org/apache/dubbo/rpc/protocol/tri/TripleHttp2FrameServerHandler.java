@@ -19,17 +19,15 @@
 
 package org.apache.dubbo.rpc.protocol.tri;
 
-import java.util.List;
-
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.common.stream.StreamObserver;
 import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcInvocation;
 import org.apache.dubbo.rpc.model.ApplicationModel;
-import org.apache.dubbo.rpc.model.MethodDescriptor;
 import org.apache.dubbo.rpc.model.ServiceDescriptor;
 import org.apache.dubbo.rpc.model.ServiceRepository;
 import org.apache.dubbo.rpc.protocol.tri.GrpcStatus.Code;
@@ -44,7 +42,6 @@ import io.netty.handler.codec.http2.Http2DataFrame;
 import io.netty.handler.codec.http2.Http2Frame;
 import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2HeadersFrame;
-import org.reactivestreams.Subscriber;
 
 import static org.apache.dubbo.rpc.protocol.tri.TripleUtil.responseErr;
 import static org.apache.dubbo.rpc.protocol.tri.TripleUtil.responsePlainTextError;
@@ -175,10 +172,10 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
         inv.setMethodName(methodName);
         inv.setServiceName(serviceName);
         inv.setTargetServiceUniqueName(serviceName);
-        inv.setParameterTypes(new Class[] {Subscriber.class});
-        inv.setReturnTypes(new Class[] {Subscriber.class});
+        inv.setParameterTypes(new Class[] {StreamObserver.class});
+        inv.setReturnTypes(new Class[] {StreamObserver.class});
         Result result = delegateInvoker.invoke(inv);
-        final Subscriber<Object> resp = (Subscriber<Object>)result.get().getValue();
+        final StreamObserver<Object> resp = (StreamObserver<Object>)result.get().getValue();
         ResponseObserverProcessor processor = new ResponseObserverProcessor(ctx, serverStream, resp);
         serverStream.onHeaders(headers);
         ctx.channel().attr(TripleUtil.SERVER_STREAM_KEY).set(serverStream);

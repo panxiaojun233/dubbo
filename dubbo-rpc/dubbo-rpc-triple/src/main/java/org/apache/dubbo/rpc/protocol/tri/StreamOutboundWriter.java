@@ -2,24 +2,16 @@ package org.apache.dubbo.rpc.protocol.tri;
 
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 
+import org.apache.dubbo.common.stream.StreamObserver;
 
-public class StreamOutboundWriter implements Subscriber<Object> {
+public class StreamOutboundWriter implements StreamObserver<Object> {
 
-    private Subscription subscription;
     private ServerStream stream;
     private final AtomicBoolean canceled = new AtomicBoolean();
 
     public StreamOutboundWriter(ServerStream stream) {
         this.stream = stream;
-    }
-
-    @Override
-    public void onSubscribe(Subscription s) {
-        this.subscription = s;
-        s.request(1);
     }
 
     @Override
@@ -39,9 +31,6 @@ public class StreamOutboundWriter implements Subscriber<Object> {
 
     public void doCancel() {
         if (canceled.compareAndSet(false, true)) {
-            if (subscription != null) {
-                subscription.cancel();
-            }
             stream.onComplete();
         }
     }
