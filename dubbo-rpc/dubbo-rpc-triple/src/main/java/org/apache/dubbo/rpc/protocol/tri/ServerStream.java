@@ -164,6 +164,10 @@ public class ServerStream extends AbstractStream implements Stream {
         ctx.writeAndFlush(new DefaultHttp2HeadersFrame(trailers, true));
     }
 
+    private void streamInvoke() {
+
+    }
+
     private void unaryInvoke() {
 
         Invocation invocation;

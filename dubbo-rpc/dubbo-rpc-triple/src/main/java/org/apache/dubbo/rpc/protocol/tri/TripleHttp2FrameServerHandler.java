@@ -19,6 +19,8 @@
 
 package org.apache.dubbo.rpc.protocol.tri;
 
+import java.util.List;
+
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
@@ -28,6 +30,7 @@ import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcInvocation;
 import org.apache.dubbo.rpc.model.ApplicationModel;
+import org.apache.dubbo.rpc.model.MethodDescriptor;
 import org.apache.dubbo.rpc.model.ServiceDescriptor;
 import org.apache.dubbo.rpc.model.ServiceRepository;
 import org.apache.dubbo.rpc.protocol.tri.GrpcStatus.Code;
@@ -163,23 +166,29 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
                 GrpcStatus.fromCode(Code.UNIMPLEMENTED).withDescription("Service not found:" + serviceName));
             return;
         }
-
         final ServerStream serverStream = new ServerStream(delegateInvoker, descriptor, methodName, ctx);
-        // 往netty写数据，server impl.onNext
-        StreamOutboundWriter streamOutboundWriter = new StreamOutboundWriter(serverStream);
-        RpcInvocation inv = new RpcInvocation();//streamOutboundWriter
-        inv.setArguments(new Object[] {streamOutboundWriter});
-        inv.setMethodName(methodName);
-        inv.setServiceName(serviceName);
-        inv.setTargetServiceUniqueName(serviceName);
-        inv.setParameterTypes(new Class[] {StreamObserver.class});
-        inv.setReturnTypes(new Class[] {StreamObserver.class});
-        Result result = delegateInvoker.invoke(inv);
-        final StreamObserver<Object> resp = (StreamObserver<Object>)result.get().getValue();
-        ResponseObserverProcessor processor = new ResponseObserverProcessor(ctx, serverStream, resp);
-        serverStream.onHeaders(headers);
+        List<MethodDescriptor> methods = descriptor.getMethods(methodName);
+        if (methods != null && methods.size() == 1) {
+            if (methods.get(0).isNoPubStream()) {
+                // 往netty写数据，server impl.onNext
+                StreamOutboundWriter streamOutboundWriter = new StreamOutboundWriter(serverStream);
+                RpcInvocation inv = new RpcInvocation();//streamOutboundWriter
+                inv.setArguments(new Object[] {streamOutboundWriter});
+                inv.setMethodName(methodName);
+                inv.setServiceName(serviceName);
+                inv.setTargetServiceUniqueName(serviceName);
+                inv.setParameterTypes(new Class[] {StreamObserver.class});
+                inv.setReturnTypes(new Class[] {StreamObserver.class});
+                Result result = delegateInvoker.invoke(inv);
+                final StreamObserver<Object> resp = (StreamObserver<Object>)result.get().getValue();
+                ResponseObserverProcessor processor = new ResponseObserverProcessor(ctx, serverStream, resp);
+                serverStream.onHeaders(headers);
+                ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).set(processor);
+            }
+        }
+
         ctx.channel().attr(TripleUtil.SERVER_STREAM_KEY).set(serverStream);
-        ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).set(processor);
+
         if (msg.isEndStream()) {
             serverStream.halfClose();
         }
