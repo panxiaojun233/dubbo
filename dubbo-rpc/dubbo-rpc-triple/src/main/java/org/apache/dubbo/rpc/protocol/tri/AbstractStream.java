@@ -83,13 +83,6 @@ public abstract class AbstractStream implements Stream {
         this.serializeType = serializeType;
     }
 
-    protected boolean isNeedWrap() {
-        return needWrap;
-    }
-
-    protected void setNeedWrap(boolean needWrap) {
-        this.needWrap = needWrap;
-    }
 
     public ChannelHandlerContext getCtx() {
         return ctx;
@@ -122,8 +115,13 @@ public abstract class AbstractStream implements Stream {
         //    return;
         //}
 
+        //TODO requestN n>1 notify onNext(request)
+        // if
         this.datas.add(in);
+        // else
+        onSingleMessage(in);
     }
+    protected abstract void onSingleMessage(InputStream in);
 
     public void onHeaders(Http2Headers headers) {
         if (this.headers == null) {

@@ -42,10 +42,13 @@ public class MethodDescriptor {
     private final Type[] returnTypes;
     private final String methodName;
     private final boolean generic;
+    private final boolean needWrap;
     private boolean noPubStream;
 
     public MethodDescriptor(Method method) {
         this.method = method;
+        // todo set needWrap
+        this.needWrap=true;
         Class<?>[] parameterTypes = method.getParameterTypes();
         if (parameterTypes.length == 1 && isStreamType(parameterTypes[0])) {
             this.parameterClasses = new Class<?>[]{(Class<?>)((ParameterizedType) method.getGenericReturnType()).getActualTypeArguments()[0]};
@@ -109,4 +112,7 @@ public class MethodDescriptor {
         return generic;
     }
 
+    public boolean isNeedWrap() {
+        return needWrap;
+    }
 }

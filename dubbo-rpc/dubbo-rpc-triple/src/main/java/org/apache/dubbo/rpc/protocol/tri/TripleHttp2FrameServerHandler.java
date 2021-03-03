@@ -17,6 +17,7 @@
 package org.apache.dubbo.rpc.protocol.tri;
 
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -29,6 +30,8 @@ import org.apache.dubbo.rpc.model.MethodDescriptor;
 import org.apache.dubbo.rpc.model.ServiceDescriptor;
 import org.apache.dubbo.rpc.model.ServiceRepository;
 import org.apache.dubbo.rpc.protocol.tri.GrpcStatus.Code;
+import org.apache.dubbo.rpc.service.EchoService;
+import org.apache.dubbo.rpc.service.GenericService;
 
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -42,12 +45,16 @@ import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2HeadersFrame;
 import io.netty.util.ReferenceCountUtil;
 
+import java.io.InputStream;
+import java.util.List;
+
 import static org.apache.dubbo.rpc.protocol.tri.TripleUtil.responseErr;
 import static org.apache.dubbo.rpc.protocol.tri.TripleUtil.responsePlainTextError;
 
 public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(TripleHttp2FrameServerHandler.class);
     private static final PathResolver PATH_RESOLVER = ExtensionLoader.getExtensionLoader(PathResolver.class).getDefaultExtension();
+
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -78,13 +85,19 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
 
     public void onDataRead(ChannelHandlerContext ctx, Http2DataFrame msg) throws Exception {
         super.channelRead(ctx, msg.content());
-        ResponseObserverProcessor processor = ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).get();
-        if (processor != null) {
-            processor.getStream().onData(ctx);
-            if (msg.isEndStream()) {
-                processor.onComplete();
-            }
-        }
+//        StreamObserver<Object> processor = ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).get();
+
+//        InputStream is = pollData();
+//        while (is != null) {
+//            processor.onNext(TripleUtil.unpack(is, methodDescriptor.getParameterClasses()[0]));
+//            is = pollData();
+//        }
+//        if (processor != null) {
+//            processor.getStream().onData(ctx);
+//            if (msg.isEndStream()) {
+//                processor.onComplete();
+//            }
+//        }
         if (msg.isEndStream()) {
             final ServerStream serverStream = TripleUtil.getServerStream(ctx);
             // stream already closed;
@@ -158,15 +171,18 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
         }
 
         boolean isNoPubStream = false;
+        MethodDescriptor md=null;
         for (MethodDescriptor methodDescriptor : descriptor.getMethods(methodName)) {
             if (methodDescriptor.isNoPubStream()) {
                 isNoPubStream = true;
             }
+            md=methodDescriptor;
         }
 
         if (isNoPubStream) {
-            final ServerStream serverStream = new ServerStream(delegateInvoker, descriptor, methodName, ctx);
+            final ServerStream serverStream = new ServerStream(delegateInvoker, descriptor,md, ctx);
             // 往netty写数据，server impl.onNext
+            // serverStream -> request
             StreamOutboundWriter streamOutboundWriter = new StreamOutboundWriter(serverStream);
             RpcInvocation inv = new RpcInvocation();//streamOutboundWriter
             inv.setArguments(new Object[] {streamOutboundWriter});
@@ -177,13 +193,20 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
             inv.setReturnTypes(new Class[] {StreamObserver.class});
             Result result = delegateInvoker.invoke(inv);
             final StreamObserver<Object> resp = (StreamObserver<Object>)result.get().getValue();
-            ResponseObserverProcessor processor = new ResponseObserverProcessor(ctx, serverStream, resp);
-            ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).set(processor);
+//            ResponseObserverProcessor processor = new ResponseObserverProcessor(ctx, serverStream, resp);
+            ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).set(resp);
 
             serverStream.onHeaders(headers);
             ctx.channel().attr(TripleUtil.SERVER_STREAM_KEY).set(serverStream);
         } else {
-            final ServerStream serverStream = new ServerStream(delegateInvoker, descriptor, methodName, ctx);
+            // 如果是unary 的，可能是$echo/$invoke
+//            if (CommonConstants.$INVOKE.equals(methodName) || CommonConstants.$INVOKE_ASYNC.equals(methodName)) {
+//                this.methodDescriptor = repo.lookupMethod(GenericService.class.getName(), methodName);
+//                setNeedWrap(true);
+//            } else if("$echo".equals(methodName)) {
+//                this.methodDescriptor=repo.lookupMethod(EchoService.class.getName(),methodName);
+//                setNeedWrap(true);
+            final ServerStream serverStream = new ServerStream(delegateInvoker, descriptor,md, ctx);
             serverStream.onHeaders(headers);
             ctx.channel().attr(TripleUtil.SERVER_STREAM_KEY).set(serverStream);
             if (msg.isEndStream()) {

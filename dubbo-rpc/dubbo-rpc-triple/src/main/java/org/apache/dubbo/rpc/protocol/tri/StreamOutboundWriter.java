@@ -7,6 +7,7 @@ import org.apache.dubbo.common.stream.StreamObserver;
 
 public class StreamOutboundWriter implements StreamObserver<Object> {
 
+    // ServerStream = Reactive Processor
     private ServerStream stream;
     private final AtomicBoolean canceled = new AtomicBoolean();
 
@@ -16,7 +17,7 @@ public class StreamOutboundWriter implements StreamObserver<Object> {
 
     @Override
     public void onNext(Object o) {
-        stream.writeObjectOut(o);
+        stream.write(o,null);
     }
 
     @Override
