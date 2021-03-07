@@ -87,10 +87,10 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
         super.channelRead(ctx, msg.content());
 
         if (msg.isEndStream()) {
-            final ServerStream serverStream = TripleUtil.getServerStream(ctx);
+            final Processor processor = ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).get();
             // stream already closed;
-            if (serverStream != null) {
-                serverStream.halfClose();
+            if (processor != null) {
+                processor.getObserver().onHalfClose();
             }
         }
     }
@@ -177,12 +177,16 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
         md = methodDescriptors.get(0);
 
         if (md.isStream()) {
-            final ServerStream serverStream = new ServerStream(delegateInvoker, descriptor, md, ctx);
-            Invocation inv = serverStream.buildInvocation();
+            final ServerStream serverStream = new ServerStream(ctx);
+            //todo md 创建时候构造processor？
+            ServerStreamProcessor processor = new ServerStreamProcessor(serverStream, delegateInvoker, descriptor, md, ctx);
+            serverStream.setProcessor(processor);
+
+            Invocation inv = processor.buildInvocation();
             Result result = delegateInvoker.invoke(inv);
-            final StreamObserver<Object> resp = new ServerInboundObserver(
-                (StreamObserver<Object>)result.get().getValue(), md);
-            ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).set(resp);
+            final StreamObserver<Object> resp = (StreamObserver<Object>)result.get().getValue();
+            processor.setRespObserver(resp);
+            ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).set(processor);
 
             serverStream.onHeaders(headers);
             ctx.channel().attr(TripleUtil.SERVER_STREAM_KEY).set(serverStream);
@@ -192,9 +196,10 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
             } else if ("$echo".equals(methodName)) {
                 md = repo.lookupMethod(EchoService.class.getName(), methodName);
             }
-            final ServerStream serverStream = new ServerStream(delegateInvoker, descriptor, md, ctx);
+            final ServerStream serverStream = new ServerStream(ctx);
+            ServerUnaryProcessor processor = new ServerUnaryProcessor(serverStream, delegateInvoker, descriptor, md, ctx);
             serverStream.onHeaders(headers);
-            ctx.channel().attr(TripleUtil.SERVER_STREAM_KEY).set(serverStream);
+            ctx.channel().attr(TripleUtil.SERVER_STREAM_PROCESSOR_KEY).set(processor);
             if (msg.isEndStream()) {
                 serverStream.halfClose();
             }

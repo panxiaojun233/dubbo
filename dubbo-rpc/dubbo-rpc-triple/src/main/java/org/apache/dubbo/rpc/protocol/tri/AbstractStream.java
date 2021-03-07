@@ -52,6 +52,11 @@ public abstract class AbstractStream implements Stream {
     private Queue<InputStream> datas = new ArrayDeque<>();
     private InputStream data;
     private String serializeType;
+    private int requestNum = 1;
+
+    public void request(int n) {
+        requestNum += n;
+    }
 
     protected AbstractStream(URL url, ChannelHandlerContext ctx) {
         this(url, ctx, false);
@@ -118,12 +123,13 @@ public abstract class AbstractStream implements Stream {
     @Override
     public void onData(InputStream in) throws Exception {
         //TODO requestN n>1 notify onNext(request)
-        if (false) {
+        if (requestNum > 1) {
             this.datas.add(in);
         } else {
             onSingleMessage(in);
         }
     }
+
     protected abstract void onSingleMessage(InputStream in) throws Exception;
 
     public void onHeaders(Http2Headers headers) {

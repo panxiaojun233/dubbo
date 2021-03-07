@@ -1,36 +1,34 @@
 package org.apache.dubbo.rpc.protocol.tri;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.dubbo.common.stream.StreamObserver;
 
 public class StreamOutboundWriter implements StreamObserver<Object> {
 
-    private ServerStream stream;
-    private final AtomicBoolean canceled = new AtomicBoolean();
 
-    public StreamOutboundWriter(ServerStream stream) {
-        this.stream = stream;
+    private Processor.Observer observer;
+    private Processor processor;
+
+    public StreamOutboundWriter(Processor processor) {
+        this.observer = processor.getObserver();
+        this.processor = processor;
     }
 
     @Override
     public void onNext(Object o) throws Exception {
-        stream.write(o, null);
+        observer.onNext(o);
     }
 
     @Override
-    public void onError(Throwable t) {
-        doCancel();
+    public void onError(Throwable t) throws Exception {
+        onCancel();
     }
 
     @Override
-    public void onComplete() {
-        stream.onComplete();
+    public void onComplete() throws Exception {
+        observer.onComplete();
     }
 
-    public void doCancel() {
-        if (canceled.compareAndSet(false, true)) {
-            stream.onComplete();
-        }
+    public void onCancel() throws Exception {
+        observer.onCancel();
     }
 }

@@ -224,4 +224,8 @@ public class ClientStream extends AbstractStream implements Stream {
         }
     }
 
+    @Override
+    protected void onSingleMessage(InputStream in) throws Exception {
+
+    }
 }

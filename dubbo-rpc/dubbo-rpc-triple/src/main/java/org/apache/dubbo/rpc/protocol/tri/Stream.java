@@ -32,4 +32,6 @@ public interface Stream {
     void write(Object obj, ChannelPromise promise) throws Exception;
 
     void halfClose() throws Exception;
+
+    void request(int num);
 }
