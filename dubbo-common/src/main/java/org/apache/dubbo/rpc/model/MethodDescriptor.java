@@ -21,7 +21,6 @@ import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.stream.StreamObserver;
 import org.apache.dubbo.common.utils.ReflectUtils;
 
-import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
